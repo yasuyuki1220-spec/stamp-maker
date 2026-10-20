@@ -34,7 +34,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,label:focus-within
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;min-height:44px}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
 .btn:disabled{opacity:.5;cursor:default}
-.drop{display:flex;align-items:center;justify-content:center;text-align:center;border:2px dashed var(--line);border-radius:12px;padding:16px;min-height:96px;cursor:pointer;color:var(--mute);font-weight:700}
+.drop{display:flex;align-items:center;justify-content:center;text-align:center;border:2px dashed var(--line);border-radius:12px;padding:16px;min-height:80px;cursor:pointer;color:var(--mute);font-weight:700}
 .drop.over{border-color:var(--accent);color:var(--ink)}
 .drop input{position:absolute;opacity:0;width:1px;height:1px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -52,7 +52,7 @@ input[type=color]{width:44px;height:36px;padding:2px;border:1px solid var(--line
 .colors span{font-size:13px;color:var(--mute)}
 .checker{background-color:var(--chk-b);background-image:conic-gradient(var(--chk-a) 25%,transparent 0 50%,var(--chk-a) 0 75%,transparent 0);background-size:16px 16px}
 .srcbox{border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;justify-content:center}
-.srcbox canvas{max-width:100%;max-height:140px;image-rendering:pixelated}
+.srcbox canvas{max-width:100%;max-height:140px}
 .bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .info{font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
@@ -61,6 +61,7 @@ input[type=color]{width:44px;height:36px;padding:2px;border:1px solid var(--line
 .thumb img{display:block;width:100%;height:auto;-webkit-touch-callout:default}
 .thumb b{position:absolute;left:6px;top:4px;font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums}
 .card input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 8px;min-width:0}
+.empty{grid-column:1/-1;color:var(--mute);padding:24px 0}
 .note{font-size:12px;color:var(--mute);margin-top:14px;max-width:70ch}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:700;font-size:14px;max-width:calc(100% - 32px);text-align:center}
 @media(prefers-reduced-motion:no-preference){.btn{transition:transform .08s}.btn:active{transform:scale(.97)}}
@@ -68,18 +69,31 @@ input[type=color]{width:44px;height:36px;padding:2px;border:1px solid var(--line
 
 <div class="wrap">
   <h1>スタンプ自動メーカー</h1>
-  <p class="lead">キャラクターの画像を1枚入れるだけで、LINEスタンプまたはLINE絵文字の規格サイズのPNGを、セリフ・向き・飾り違いで自動的に作ります。</p>
+  <p class="lead">ひよこの表情・目・口・羽のポーズ・飾り・セリフを組み合わせて、1枚ずつ違う絵のLINEスタンプ/絵文字を最大40種つくります。規格サイズのPNGをZIPで保存できます。</p>
 
   <div class="layout">
     <section class="panel" aria-label="設定">
       <div class="group">
-        <span class="label">サンプル画像</span>
+        <span class="label">キャラクター</span>
+        <div class="seg" role="radiogroup" aria-label="キャラクター">
+          <label><input type="radio" name="src" value="chick" checked>ひよこ</label>
+          <label><input type="radio" name="src" value="upload">取り込み画像</label>
+        </div>
+        <div class="srcbox checker"><canvas id="srcView" width="20" height="18"></canvas></div>
+      </div>
+
+      <div id="uploadBox" class="group" hidden>
         <label class="drop" id="drop">
           <input type="file" id="file" accept="image/*">
-          <span>ここをタップして画像を選ぶ<br><small>(ドラッグ&ドロップも可)</small></span>
+          <span>ここをタップして画像を選ぶ<br><small>(取り込み画像は傾き・飾りの違いだけになります)</small></span>
         </label>
         <button class="btn" id="sampleBtn" type="button">ドット絵ポメで試す</button>
-        <div class="srcbox checker"><canvas id="srcView" width="20" height="18"></canvas></div>
+        <label class="check"><input type="checkbox" id="removeBg" checked>背景を自動で消す</label>
+        <div id="tolBox" class="group">
+          <label for="tol" class="info">背景の許容度</label>
+          <input type="range" id="tol" min="0" max="100" value="30">
+        </div>
+        <label class="check"><input type="checkbox" id="pixel" checked>ドット絵モード</label>
       </div>
 
       <div class="group">
@@ -95,16 +109,6 @@ input[type=color]{width:44px;height:36px;padding:2px;border:1px solid var(--line
         <select id="count">
           <option>8</option><option selected>16</option><option>24</option><option>32</option><option>40</option>
         </select>
-      </div>
-
-      <div class="group">
-        <span class="label">画像の処理</span>
-        <label class="check"><input type="checkbox" id="removeBg" checked>背景を自動で消す</label>
-        <div id="tolBox" class="group">
-          <label for="tol" class="info">背景の許容度</label>
-          <input type="range" id="tol" min="0" max="100" value="30">
-        </div>
-        <label class="check"><input type="checkbox" id="pixel" checked>ドット絵モード(拡大してもくっきり)</label>
         <label class="check"><input type="checkbox" id="outline" checked>白フチをつける</label>
       </div>
 
@@ -126,7 +130,7 @@ input[type=color]{width:44px;height:36px;padding:2px;border:1px solid var(--line
       <div class="bar">
         <span class="info" id="info"></span>
         <div class="row">
-          <button class="btn" id="shuffleBtn" type="button">セリフを入れ替え</button>
+          <button class="btn" id="shuffleBtn" type="button">組み合わせを入れ替え</button>
           <button class="btn primary" id="zipBtn" type="button">ZIPで保存</button>
         </div>
       </div>
@@ -144,7 +148,144 @@ input[type=color]{width:44px;height:36px;padding:2px;border:1px solid var(--line
 var $=function(s){return document.querySelector(s)};
 var mk=function(w,h){var c=document.createElement('canvas');c.width=w;c.height=h;return c};
 
-/* ---------- セリフと動きのプリセット(40個) ---------- */
+/* =====================================================
+   ひよこ: 目・口・羽・飾りを部品にして、1体ずつ描き分ける(SVG)
+   ===================================================== */
+var OUT='#5b3a2a',BODYC='#ffe45e',ORANGE='#ff9a2e',BLUSHC='#f5a5a0',RED='#e8492b';
+var SW='stroke="'+OUT+'" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"';
+function heartP(x,y,s){return 'M'+x+' '+(y+.55*s)+' C'+(x-1.2*s)+' '+(y-.1*s)+' '+(x-.55*s)+' '+(y-.95*s)+' '+x+' '+(y-.35*s)+' C'+(x+.55*s)+' '+(y-.95*s)+' '+(x+1.2*s)+' '+(y-.1*s)+' '+x+' '+(y+.55*s)+'Z'}
+function starP(x,y,r,n,k){var p='';for(var i=0;i<n*2;i++){var a=-Math.PI/2+i*Math.PI/n,rr=i%2?r*k:r;p+=(i?'L':'M')+(x+Math.cos(a)*rr).toFixed(1)+' '+(y+Math.sin(a)*rr).toFixed(1)}return p+'Z'}
+function dropP(x,y,s){return 'M'+x+' '+(y-s)+' C'+(x+.9*s)+' '+(y+.1*s)+' '+(x+.6*s)+' '+(y+.9*s)+' '+x+' '+(y+.9*s)+' C'+(x-.6*s)+' '+(y+.9*s)+' '+(x-.9*s)+' '+(y+.1*s)+' '+x+' '+(y-s)+'Z'}
+function tear(x,y){return '<path d="M'+x+' '+(y+16)+' Q'+(x-8)+' '+(y+48)+' '+(x-3)+' '+(y+78)+'" fill="none" stroke="#6cc4ff" stroke-width="10" stroke-linecap="round"/>'}
+function eye(k,x,y,side){
+  switch(k){
+    case 'happy':return '<path d="M'+(x-17)+' '+(y+7)+' Q'+x+' '+(y-15)+' '+(x+17)+' '+(y+7)+'" fill="none" '+SW+'/>';
+    case 'sleep':return '<path d="M'+(x-16)+' '+(y-2)+' Q'+x+' '+(y+14)+' '+(x+16)+' '+(y-2)+'" fill="none" '+SW+'/>';
+    case 'flat':return '<path d="M'+(x-14)+' '+y+' L'+(x+14)+' '+y+'" fill="none" '+SW+'/>';
+    case 'big':return '<ellipse cx="'+x+'" cy="'+y+'" rx="14" ry="17" fill="'+OUT+'"/><circle cx="'+(x+4)+'" cy="'+(y-6)+'" r="5.5" fill="#fff"/><circle cx="'+(x-4)+'" cy="'+(y+6)+'" r="2.8" fill="#fff"/>';
+    case 'wow':return '<ellipse cx="'+x+'" cy="'+y+'" rx="15" ry="18" fill="#fff" stroke="'+OUT+'" stroke-width="5"/><circle cx="'+x+'" cy="'+y+'" r="5.5" fill="'+OUT+'"/>';
+    case 'star':return '<path d="'+starP(x,y,19,5,.5)+'" fill="#ffb300" stroke="'+OUT+'" stroke-width="4" stroke-linejoin="round"/>';
+    case 'heart':return '<path d="'+heartP(x,y,19)+'" fill="#ff5c8a" stroke="'+OUT+'" stroke-width="4" stroke-linejoin="round"/>';
+    case 'cry':return eye('big',x,y)+tear(x,y);
+    case 'angry':var d=side<0?'M'+(x-20)+' '+(y-24)+' L'+(x+14)+' '+(y-12):'M'+(x+20)+' '+(y-24)+' L'+(x-14)+' '+(y-12);
+      return eye('dot',x,y+4)+'<path d="'+d+'" fill="none" '+SW+'/>';
+    default:return '<ellipse cx="'+x+'" cy="'+y+'" rx="9" ry="12" fill="'+OUT+'"/><circle cx="'+(x+3)+'" cy="'+(y-4)+'" r="3.5" fill="#fff"/>';
+  }
+}
+var BEAK_TOP='<path d="M178 170 Q201 158 224 170 Q220 183 201 185 Q182 183 178 170Z" fill="'+ORANGE+'" stroke="'+OUT+'" stroke-width="5" stroke-linejoin="round"/>';
+var BEAK='<path d="M180 172 Q201 160 222 172 Q220 192 201 196 Q182 192 180 172Z" fill="'+ORANGE+'" stroke="'+OUT+'" stroke-width="5" stroke-linejoin="round"/>';
+function mouth(k){
+  switch(k){
+    case 'open':return '<path d="M178 170 Q201 158 224 170 Q226 205 201 211 Q176 205 178 170Z" fill="'+RED+'" stroke="'+OUT+'" stroke-width="5" stroke-linejoin="round"/><ellipse cx="201" cy="201" rx="11" ry="6.5" fill="#ff8a9a"/>'+BEAK_TOP;
+    case 'grin':return '<path d="M172 168 Q201 154 230 168 Q233 214 201 220 Q169 214 172 168Z" fill="'+RED+'" stroke="'+OUT+'" stroke-width="5" stroke-linejoin="round"/><ellipse cx="201" cy="209" rx="14" ry="8" fill="#ff8a9a"/>'+BEAK_TOP;
+    case 'tiny':return '<ellipse cx="201" cy="191" rx="8" ry="10" fill="'+RED+'" stroke="'+OUT+'" stroke-width="4"/>'+'<path d="M184 170 Q201 160 218 170 Q214 181 201 183 Q188 181 184 170Z" fill="'+ORANGE+'" stroke="'+OUT+'" stroke-width="5" stroke-linejoin="round"/>';
+    case 'smile':return BEAK+'<path d="M184 199 Q201 214 218 199" fill="none" '+SW.replace('6','5')+'/>';
+    case 'sad':return BEAK+'<path d="M186 211 Q201 196 216 211" fill="none" '+SW.replace('6','5')+'/>';
+    case 'tongue':return BEAK+'<path d="M191 197 Q201 224 211 197Z" fill="#ff8a9a" stroke="'+OUT+'" stroke-width="4" stroke-linejoin="round"/>';
+    default:return BEAK;
+  }
+}
+var WINGS={
+  out:[[92,182,-20,62,1],[308,182,-20,62,0]], ref:[[92,182,-40,62,1],[308,188,15,62,0]],
+  hug:[[92,182,-38,66,1],[308,182,-38,66,0]], up:[[100,170,-75,66,1],[300,170,-75,66,0]],
+  down:[[96,190,62,58,1],[304,190,62,58,0]], hip:[[92,200,35,60,1],[308,200,35,60,0]],
+  wave:[[100,170,-75,66,1],[304,190,40,60,0]], wave2:[[96,190,40,60,1],[300,170,-75,66,0]],
+  front:[[126,262,-18,56,0],[274,262,-18,56,1]], cover:[[120,200,-42,60,0],[280,200,-42,60,1]],
+  salute:[[96,190,62,58,1],[306,178,-122,70,0]], think:[[96,190,62,58,1],[300,200,155,64,0]]
+};
+function wing(w){
+  var L=w[3],tr='translate('+w[0]+' '+w[1]+')'+(w[4]?' scale(-1 1)':'')+' rotate('+w[2]+')';
+  return '<path transform="'+tr+'" d="M0 -17 Q'+L*.5+' -27 '+L+' -7 Q'+(L+9)+' 8 '+(L-14)+' 18 Q'+L*.5+' 27 0 17Z" fill="'+BODYC+'" stroke="'+OUT+'" stroke-width="5" stroke-linejoin="round"/>';
+}
+var TXT='font-family="\'Hiragino Maru Gothic ProN\',\'Arial Rounded MT Bold\',Arial,sans-serif" font-weight="900"';
+function radial(angles,color){
+  return angles.map(function(d){var a=d*Math.PI/180,c=Math.cos(a),s=Math.sin(a),
+    rE=1/Math.sqrt(Math.pow(c/128,2)+Math.pow(s/112,2)),r1=rE+16,r2=rE+42;
+    return '<path d="M'+(200+c*r1).toFixed(1)+' '+(190+s*r1).toFixed(1)+' L'+(200+c*r2).toFixed(1)+' '+(190+s*r2).toFixed(1)+'" stroke="#ffb62e" stroke-width="9" stroke-linecap="round"/>'}).join('');
+}
+function deco(k){
+  switch(k){
+    case 'lines':return radial([-160,-140,-120,-60,-40,-20]);
+    case 'hearts':return '<path d="'+heartP(328,100,22)+'" fill="#ff6f9a"/><path d="'+heartP(76,122,16)+'" fill="#ff8fb0"/>';
+    case 'stars':return '<path d="'+starP(330,98,26,5,.45)+'" fill="#ffd23c" stroke="#e0a800" stroke-width="3" stroke-linejoin="round"/><path d="'+starP(72,112,17,5,.45)+'" fill="#ffe27a" stroke="#e0a800" stroke-width="3" stroke-linejoin="round"/>';
+    case 'sparkle':return '<path d="'+starP(328,96,28,4,.28)+'" fill="#ffd84d"/><path d="'+starP(70,132,18,4,.28)+'" fill="#fff0a0" stroke="#f0c020" stroke-width="2"/>';
+    case 'sweat':return '<path d="'+dropP(298,104,20)+'" fill="#6cc4ff" stroke="#3a8fd6" stroke-width="3"/>';
+    case 'q':return '<text x="300" y="130" font-size="104" '+TXT+' fill="#3b82f6" stroke="#fff" stroke-width="8" paint-order="stroke">?</text>';
+    case 'ex':return '<text x="302" y="130" font-size="104" '+TXT+' fill="#ff5a36" stroke="#fff" stroke-width="8" paint-order="stroke">!</text>';
+    case 'zzz':return '<text x="286" y="116" font-size="38" '+TXT+' fill="#6c8cff">Z</text><text x="312" y="86" font-size="48" '+TXT+' fill="#6c8cff">Z</text><text x="344" y="48" font-size="58" '+TXT+' fill="#6c8cff">Z</text>';
+    case 'vein':return '<g stroke="#e53935" stroke-width="7" stroke-linecap="round" fill="none"><path d="M284 92 Q304 92 304 70"/><path d="M336 92 Q316 92 316 70"/><path d="M284 112 Q304 112 304 134"/><path d="M336 112 Q316 112 316 134"/></g>';
+    case 'gloom':return '<g stroke="#6b7fd6" stroke-width="8" stroke-linecap="round"><path d="M150 40 L150 78"/><path d="M185 30 L185 76"/><path d="M220 30 L220 76"/><path d="M255 40 L255 78"/></g>';
+    case 'speed':return '<g stroke="#9db0b8" stroke-width="8" stroke-linecap="round"><path d="M18 140 L62 140"/><path d="M12 185 L58 185"/><path d="M20 230 L62 230"/></g>';
+    case 'shake':return '<g stroke="#ffb62e" stroke-width="7" stroke-linecap="round" fill="none"><path d="M52 160 Q40 190 52 220"/><path d="M30 150 Q14 190 30 230"/><path d="M348 160 Q360 190 348 220"/><path d="M370 150 Q386 190 370 230"/></g>';
+  }
+  return '';
+}
+function chickSVG(sp){
+  var eyes=Array.isArray(sp.eyes)?sp.eyes:[sp.eyes,sp.eyes],w=WINGS[sp.wings]||WINGS.out;
+  var bl=sp.blush||1;
+  var bt='translate(0 '+(sp.dy||0)+') rotate('+(sp.rot||0)+' 200 306) translate(200 306) scale('+(sp.sx||1)+' '+(sp.sy||1)+') translate(-200 -306)';
+  var g='';
+  g+='<path d="M176 88 Q184 52 204 76 Q214 54 234 84Z" fill="'+BODYC+'" stroke="'+OUT+'" stroke-width="5" stroke-linejoin="round"/>';
+  g+='<ellipse cx="165" cy="304" rx="21" ry="10" fill="'+ORANGE+'" stroke="'+OUT+'" stroke-width="5"/><ellipse cx="235" cy="304" rx="21" ry="10" fill="'+ORANGE+'" stroke="'+OUT+'" stroke-width="5"/>';
+  g+='<ellipse cx="200" cy="190" rx="128" ry="112" fill="'+BODYC+'" stroke="'+OUT+'" stroke-width="6"/>';
+  g+='<g transform="translate(0 14)"><ellipse cx="120" cy="184" rx="'+(24*bl)+'" ry="'+(17*bl)+'" fill="'+BLUSHC+'" opacity=".9"/><ellipse cx="280" cy="184" rx="'+(24*bl)+'" ry="'+(17*bl)+'" fill="'+BLUSHC+'" opacity=".9"/>';
+  g+=eye(eyes[0],160,152,-1)+eye(eyes[1],242,152,1)+mouth(sp.mouth)+'</g>';
+  g+=w.map(wing).join('');
+  var d=(sp.deco||[]).map(deco).join('');
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="608" height="499" viewBox="10 8 380 312"><g transform="'+bt+'">'+g+'</g>'+d+'</svg>';
+}
+function svgToCanvas(svg){
+  return new Promise(function(res){
+    var im=new Image();
+    im.onload=function(){var c=mk(608,499);c.getContext('2d').drawImage(im,0,0,608,499);res(c)};
+    im.onerror=function(){res(null)};
+    im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  });
+}
+var CH=[
+ {t:'おはよう',e:'',eyes:'happy',mouth:'open',wings:'ref',deco:['lines']},
+ {t:'ありがとう',e:'♡',eyes:'happy',mouth:'smile',wings:'front',deco:['hearts']},
+ {t:'OK!',e:'OK',eyes:['dot','happy'],mouth:'open',wings:'wave',deco:['sparkle']},
+ {t:'りょうかい',e:'OK',eyes:'dot',mouth:'smile',wings:'salute',deco:[]},
+ {t:'おやすみ',e:'zzz',eyes:'sleep',mouth:'tiny',wings:'down',deco:['zzz'],rot:8},
+ {t:'ごめんね',e:'',eyes:'dot',mouth:'sad',wings:'front',deco:['sweat'],rot:6},
+ {t:'だいすき',e:'♡',eyes:'heart',mouth:'open',wings:'up',deco:['hearts']},
+ {t:'やったー！',e:'☆',eyes:'happy',mouth:'grin',wings:'up',deco:['stars'],dy:-16},
+ {t:'えっ？',e:'?',eyes:'wow',mouth:'tiny',wings:'out',deco:['q']},
+ {t:'ねむい…',e:'',eyes:'flat',mouth:'open',wings:'down',deco:['zzz']},
+ {t:'がんばれ！',e:'',eyes:'dot',mouth:'grin',wings:'up',deco:['lines']},
+ {t:'まって！',e:'!',eyes:'wow',mouth:'open',wings:'out',deco:['ex']},
+ {t:'おねがい',e:'',eyes:'big',mouth:'tiny',wings:'front',deco:[],rot:-6},
+ {t:'だいじょうぶ',e:'',eyes:'happy',mouth:'smile',wings:'out',deco:['sparkle']},
+ {t:'いいね！',e:'♪',eyes:['happy','dot'],mouth:'open',wings:'wave2',deco:['stars']},
+ {t:'ぴえん',e:'',eyes:'cry',mouth:'sad',wings:'cover',deco:[]},
+ {t:'おめでとう',e:'',eyes:'happy',mouth:'grin',wings:'up',deco:['stars','sparkle'],dy:-14},
+ {t:'たのしみ',e:'',eyes:'star',mouth:'open',wings:'up',deco:['sparkle']},
+ {t:'おなかすいた',e:'',eyes:'dot',mouth:'tongue',wings:'hip',deco:[],sx:1.06,sy:.94},
+ {t:'よろしく',e:'',eyes:'happy',mouth:'smile',wings:'front',deco:[],rot:12},
+ {t:'うれしい',e:'♡',eyes:'happy',mouth:'open',wings:'out',deco:['hearts'],blush:1.3},
+ {t:'むり…',e:'',eyes:'flat',mouth:'sad',wings:'down',deco:['gloom']},
+ {t:'ぷんぷん',e:'怒',eyes:'angry',mouth:'sad',wings:'hip',deco:['vein'],sx:1.04,sy:.96},
+ {t:'びっくり',e:'!',eyes:'wow',mouth:'tiny',wings:'up',deco:['ex'],dy:-12},
+ {t:'にっこり',e:'',eyes:'happy',mouth:'smile',wings:'down',deco:[]},
+ {t:'どきどき',e:'',eyes:'dot',mouth:'tiny',wings:'front',deco:['hearts','shake'],blush:1.3},
+ {t:'ふむふむ',e:'',eyes:'dot',mouth:'closed',wings:'think',deco:[],rot:-5},
+ {t:'ちょっと待ってね',e:'',eyes:'dot',mouth:'smile',wings:'wave',deco:['sweat']},
+ {t:'今行くよ',e:'',eyes:'dot',mouth:'grin',wings:'wave',deco:['speed'],rot:10,sx:.96},
+ {t:'ありがとうございます',e:'',eyes:'happy',mouth:'smile',wings:'front',deco:['sparkle'],rot:14},
+ {t:'おつ',e:'',eyes:'happy',mouth:'grin',wings:'salute',deco:[]},
+ {t:'すみません',e:'',eyes:'dot',mouth:'sad',wings:'front',deco:['sweat'],rot:10},
+ {t:'いただきます',e:'',eyes:'happy',mouth:'open',wings:'front',deco:['sparkle']},
+ {t:'ごちそうさま',e:'',eyes:'happy',mouth:'smile',wings:'hip',deco:['hearts']},
+ {t:'ただいま',e:'',eyes:'happy',mouth:'open',wings:'up',deco:['sparkle'],dy:-10},
+ {t:'おかえり',e:'♡',eyes:'happy',mouth:'open',wings:'hug',deco:['hearts']},
+ {t:'また明日',e:'',eyes:'happy',mouth:'smile',wings:'wave',deco:['sparkle']},
+ {t:'いってきます',e:'',eyes:'happy',mouth:'grin',wings:'wave2',deco:['speed'],rot:8,sx:.96},
+ {t:'ひま〜',e:'',eyes:'flat',mouth:'closed',wings:'down',deco:[],rot:-10},
+ {t:'ふぁいと！',e:'',eyes:'dot',mouth:'grin',wings:'up',deco:['lines']}
+].map(function(s){return {t:s.t,e:s.e,fx:'normal',spec:s,img:null}});
+
+/* ---------- 取り込み画像用のプリセット(傾き・飾りのみ) ---------- */
 var PRESETS=[
  {t:'OK!',fx:'big',e:'OK'},{t:'ありがとう',fx:'hearts',e:'♡'},{t:'おはよう',fx:'sparkle',e:''},{t:'おやすみ',fx:'zzz',e:'zzz'},
  {t:'りょうかい',fx:'normal',e:'OK'},{t:'ごめんね',fx:'sweat',e:''},{t:'おつかれさま',fx:'tiltL',e:''},{t:'だいすき',fx:'hearts',e:'♡'},
@@ -168,17 +309,19 @@ var FX={
 var slots=PRESETS.map(function(p){return Object.assign({},p)});
 
 /* ---------- 状態 ---------- */
-var orig=null, SRC=null, fontReady=false;
+var orig=null, SRC=null, chickReady=false;
+function srcMode(){return document.querySelector('input[name=src]:checked').value}
 function mode(){return document.querySelector('input[name=mode]:checked').value}
+function cur(){return srcMode()==='chick'?CH:slots}
 function cfg(){
   var m=mode();
   return {mode:m,W:m==='stamp'?370:180,H:m==='stamp'?320:180,
-    outline:$('#outline').checked,pixel:$('#pixel').checked,
+    outline:$('#outline').checked,pixel:srcMode()==='upload'&&$('#pixel').checked,
     textPos:document.querySelector('input[name=tpos]:checked').value,
     tcol:$('#tcol').value,scol:$('#scol').value};
 }
 
-/* ---------- 画像の読み込みと背景除去 ---------- */
+/* ---------- 取り込み画像: 背景除去・切り抜き ---------- */
 function removeBg(cv,tol){
   var w=cv.width,h=cv.height,ctx=cv.getContext('2d',{willReadFrequently:true});
   var id=ctx.getImageData(0,0,w,h),d=id.data,tr=0,n=0,x,y;
@@ -210,9 +353,13 @@ function buildSource(){
   var x=work.getContext('2d');x.imageSmoothingEnabled=!pix;x.drawImage(orig,0,0,work.width,work.height);
   if($('#removeBg').checked)removeBg(work,+$('#tol').value);
   SRC=crop(work);
-  var v=$('#srcView');v.width=SRC.width;v.height=SRC.height;
-  var vx=v.getContext('2d');vx.clearRect(0,0,v.width,v.height);vx.drawImage(SRC,0,0);
-  v.style.width=Math.min(SRC.width*(SRC.width<64?6:1),280)+'px';
+}
+function showSrc(){
+  var v=$('#srcView'),s=srcMode()==='chick'?CH[0].img:SRC;
+  if(!s){v.width=20;v.height=18;v.getContext('2d').clearRect(0,0,20,18);return}
+  v.width=s.width;v.height=s.height;var vx=v.getContext('2d');vx.clearRect(0,0,v.width,v.height);vx.drawImage(s,0,0);
+  v.style.imageRendering=(srcMode()==='upload'&&s.width<64)?'pixelated':'auto';
+  v.style.width=Math.min(s.width*(s.width<64?6:1),220)+'px';
 }
 function loadFile(f){
   if(!f)return;
@@ -247,7 +394,7 @@ function star(x,r,px,py){x.beginPath();for(var i=0;i<10;i++){var a=-Math.PI/2+i*
   x[i?'lineTo':'moveTo'](px+Math.cos(a)*rr,py+Math.sin(a)*rr)}x.closePath()}
 function spark(x,r,px,py){x.beginPath();for(var i=0;i<8;i++){var a=-Math.PI/2+i*Math.PI/4,rr=i%2?r*.28:r;
   x[i?'lineTo':'moveTo'](px+Math.cos(a)*rr,py+Math.sin(a)*rr)}x.closePath()}
-function drop(x,s,px,py){x.beginPath();x.moveTo(px,py-s);
+function dropC(x,s,px,py){x.beginPath();x.moveTo(px,py-s);
   x.bezierCurveTo(px+s*.9,py+s*.1,px+s*.6,py+s*.9,px,py+s*.9);
   x.bezierCurveTo(px-s*.6,py+s*.9,px-s*.9,py+s*.1,px,py-s);x.closePath()}
 function shape(x,path,fill,lw){x.lineJoin='round';x.lineWidth=lw;x.strokeStyle='#fff';path();x.stroke();x.fillStyle=fill;path();x.fill()}
@@ -258,13 +405,13 @@ function label(x,t,px,py,fs,fill,stroke,maxW){
   x.textAlign='center';x.textBaseline='middle';x.lineJoin='round';
   x.lineWidth=Math.max(2,fs*.3);x.strokeStyle=stroke;x.strokeText(t,px,py);x.fillStyle=fill;x.fillText(t,px,py);
 }
-function deco(x,kind,b){
+function decoC(x,kind,b){
   var s=Math.min(b.aw,b.ah)*.16,lw=Math.max(2,s*.28);
   var tr=[b.ax+b.aw*.82,b.ay+b.ah*.2],tl=[b.ax+b.aw*.18,b.ay+b.ah*.2],bl=[b.ax+b.aw*.14,b.ay+b.ah*.72];
   if(kind==='hearts'){shape(x,function(){heart(x,s,tr[0],tr[1])},'#ff5c8a',lw);shape(x,function(){heart(x,s*.7,tl[0],tl[1]+s*.4)},'#ff8fb0',lw)}
   else if(kind==='stars'){shape(x,function(){star(x,s*1.1,tr[0],tr[1])},'#ffc93c',lw);shape(x,function(){star(x,s*.7,tl[0],tl[1]+s*.3)},'#ffe08a',lw)}
   else if(kind==='sparkle'){shape(x,function(){spark(x,s*1.2,tr[0],tr[1])},'#ffd84d',lw);shape(x,function(){spark(x,s*.8,bl[0],bl[1])},'#fff3a8',lw)}
-  else if(kind==='sweat'){shape(x,function(){drop(x,s*.9,tl[0]+s*.4,tl[1]+s*.4)},'#5ab4ff',lw)}
+  else if(kind==='sweat'){shape(x,function(){dropC(x,s*.9,tl[0]+s*.4,tl[1]+s*.4)},'#5ab4ff',lw)}
   else if(kind==='q')label(x,'?',tr[0],tr[1],s*3,'#3b82f6','#fff')
   else if(kind==='ex')label(x,'!',tr[0],tr[1],s*3,'#ff5a36','#fff')
   else if(kind==='zzz'){label(x,'Z',tr[0]-s*.9,tr[1]+s*.8,s*1.6,'#6c8cff','#fff');label(x,'Z',tr[0],tr[1]+s*.1,s*2.1,'#6c8cff','#fff');label(x,'Z',tr[0]+s*.9,tr[1]-s*.8,s*2.6,'#6c8cff','#fff')}
@@ -273,9 +420,9 @@ function deco(x,kind,b){
       x.moveTo(-s*.7,-s*.2);x.quadraticCurveTo(-s*.2,-s*.2,-s*.2,-s*.8);x.moveTo(s*.7,-s*.2);x.quadraticCurveTo(s*.2,-s*.2,s*.2,-s*.8);
       x.moveTo(-s*.7,s*.2);x.quadraticCurveTo(-s*.2,s*.2,-s*.2,s*.8);x.moveTo(s*.7,s*.2);x.quadraticCurveTo(s*.2,s*.2,s*.2,s*.8);x.stroke()});x.restore()}
 }
-function layer(scale,ow,tint,pix){
-  var cw=Math.max(1,Math.round(SRC.width*scale)),ch=Math.max(1,Math.round(SRC.height*scale)),pad=ow+2;
-  var im=mk(cw,ch),ix=im.getContext('2d');ix.imageSmoothingEnabled=!pix;ix.drawImage(SRC,0,0,cw,ch);
+function layer(S,scale,ow,tint,pix){
+  var cw=Math.max(1,Math.round(S.width*scale)),ch=Math.max(1,Math.round(S.height*scale)),pad=ow+2;
+  var im=mk(cw,ch),ix=im.getContext('2d');ix.imageSmoothingEnabled=!pix;ix.imageSmoothingQuality='high';ix.drawImage(S,0,0,cw,ch);
   if(tint){ix.globalCompositeOperation='source-atop';ix.fillStyle=tint;ix.fillRect(0,0,cw,ch)}
   var L=mk(cw+pad*2,ch+pad*2),lx=L.getContext('2d');lx.imageSmoothingEnabled=!pix;
   if(ow>0){var sil=mk(cw,ch),sx=sil.getContext('2d');sx.drawImage(im,0,0);sx.globalCompositeOperation='source-in';sx.fillStyle='#fff';sx.fillRect(0,0,cw,ch);
@@ -284,53 +431,57 @@ function layer(scale,ow,tint,pix){
 }
 function render(p,c,o){
   o=o||{};
+  var S=o.src||(p&&p.img)||SRC;
   var W=o.W||c.W,H=o.H||c.H,stamp=c.mode==='stamp'&&!o.plain;
   var cv=mk(W,H),x=cv.getContext('2d'),fx=FX[o.plain?'normal':p.fx]||{};
   var text=o.plain?'':(c.mode==='stamp'?p.t:p.e)||'';
   if(c.mode==='stamp'&&c.textPos==='none')text='';
   var m=Math.max(2,Math.round(Math.min(W,H)*.03));
   var textH=(stamp&&text)?Math.round(H*.27):0;
-  var aw=W-2*m,ah=H-2*m-textH,ax=m,ay=(c.textPos==='top')?m+textH:m;
+  var aw=W-2*m,ah=H-2*m-textH,ax=m,ay=(c.textPos==='top'&&stamp)?m+textH:m;
   var ow=c.outline?Math.max(1,Math.round(Math.min(W,H)*.022)):0;
-  var base=Math.min((aw-2*ow-4)/SRC.width,(ah-2*ow-4)/SRC.height);
+  var base=Math.min((aw-2*ow-4)/S.width,(ah-2*ow-4)/S.height);
   if(c.pixel&&base>=1)base=Math.floor(base);
   var sc=base*(fx.sc||1);if(c.pixel&&sc>=1)sc=Math.max(1,Math.round(sc));
-  var L=layer(sc,ow,fx.tint,c.pixel);
+  var L=layer(S,sc,ow,fx.tint,c.pixel);
   x.save();x.translate(ax+aw/2+(fx.dx||0)*aw,ay+ah/2+(fx.dy||0)*ah);
   x.rotate((fx.rot||0)*Math.PI/180);x.scale((fx.flip?-1:1)*(fx.sx||1),fx.sy||1);
   x.imageSmoothingEnabled=!c.pixel;x.drawImage(L,-L.width/2,-L.height/2);x.restore();
-  if(fx.deco&&!o.plain)deco(x,fx.deco,{ax:ax,ay:ay,aw:aw,ah:ah});
+  if(fx.deco&&!o.plain)decoC(x,fx.deco,{ax:ax,ay:ay,aw:aw,ah:ah});
   if(text){
     if(stamp){var cy=c.textPos==='top'?m+textH/2:H-m-textH/2;label(x,text,W/2,cy,textH*.82,c.tcol,c.scol,W-2*m)}
-    else label(x,text,W*.7,H*.78,H*.3,c.tcol,c.scol,W*.6);
+    else label(x,text,W*.7,H*.8,H*.3,c.tcol,c.scol,W*.6);
   }
   return cv;
 }
+function plainSrc(){return srcMode()==='chick'?CH[0].img:SRC}
 
 /* ---------- 画面 ---------- */
 var token=0;
 function refresh(rebuild){
-  if(rebuild)buildSource();
-  if(!SRC)return;
+  if(rebuild&&srcMode()==='upload')buildSource();
+  showSrc();
   var t=++token;
   requestAnimationFrame(function(){if(t!==token)return;paintGrid()});
 }
 function paintGrid(){
-  var c=cfg(),n=+$('#count').value,g=$('#grid');
+  var c=cfg(),n=+$('#count').value,g=$('#grid'),list=cur();
   g.textContent='';
+  if(srcMode()==='chick'&&!chickReady){g.innerHTML='<p class="empty">ひよこを描いています…</p>';$('#zipBtn').disabled=true;return}
+  if(srcMode()==='upload'&&!SRC){g.innerHTML='<p class="empty">画像を選ぶか「ドット絵ポメで試す」を押してください。</p>';$('#zipBtn').disabled=true;$('#info').textContent='';return}
   for(var i=0;i<n;i++)(function(i){
     var fig=document.createElement('figure');fig.className='card';
     var th=document.createElement('div');th.className='thumb checker';
     var img=document.createElement('img');img.alt=(i+1)+'番目の'+(c.mode==='stamp'?'スタンプ':'絵文字');
-    img.src=render(slots[i],c).toDataURL('image/png');
+    img.src=render(list[i],c).toDataURL('image/png');
     var b=document.createElement('b');b.textContent=i+1;
     th.appendChild(img);th.appendChild(b);fig.appendChild(th);
     var inp=document.createElement('input');inp.type='text';
     var key=c.mode==='stamp'?'t':'e';
-    inp.value=slots[i][key];inp.maxLength=c.mode==='stamp'?24:4;
+    inp.value=list[i][key];inp.maxLength=c.mode==='stamp'?24:4;
     inp.placeholder=c.mode==='stamp'?'セリフ':'文字なし';
     inp.setAttribute('aria-label',(i+1)+'番目の文字');
-    inp.addEventListener('input',function(){slots[i][key]=inp.value;img.src=render(slots[i],cfg()).toDataURL('image/png')});
+    inp.addEventListener('input',function(){list[i][key]=inp.value;img.src=render(list[i],cfg()).toDataURL('image/png')});
     fig.appendChild(inp);g.appendChild(fig);
   })(i);
   $('#info').textContent=c.W+'×'+c.H+'px ・ '+n+'枚 ・ 透過PNG';
@@ -343,13 +494,13 @@ var dl=null;
 try{if(window.claude&&window.claude.use)window.claude.use('downloads').then(function(d){dl=d}).catch(function(){})}catch(e){}
 function blobOf(cv){return new Promise(function(r){cv.toBlob(r,'image/png')})}
 async function zip(){
-  if(!SRC)return;
+  var ps=plainSrc();if(!ps)return;
   var btn=$('#zipBtn');btn.disabled=true;
   try{
-    var c=cfg(),n=+$('#count').value,z=new JSZip(),pad=c.mode==='stamp'?2:3;
-    for(var i=0;i<n;i++)z.file(String(i+1).padStart(pad,'0')+'.png',await blobOf(render(slots[i],c)));
-    if(c.mode==='stamp')z.file('main.png',await blobOf(render(null,c,{W:240,H:240,plain:true})));
-    z.file('tab.png',await blobOf(render(null,c,{W:96,H:74,plain:true})));
+    var c=cfg(),n=+$('#count').value,z=new JSZip(),pad=c.mode==='stamp'?2:3,list=cur();
+    for(var i=0;i<n;i++)z.file(String(i+1).padStart(pad,'0')+'.png',await blobOf(render(list[i],c)));
+    if(c.mode==='stamp')z.file('main.png',await blobOf(render(null,c,{W:240,H:240,plain:true,src:ps})));
+    z.file('tab.png',await blobOf(render(null,c,{W:96,H:74,plain:true,src:ps})));
     var blob=await z.generateAsync({type:'blob'}),name=(c.mode==='stamp'?'stamp':'emoji')+'_'+n+'.zip';
     if(dl){
       try{await dl.save({filename:name,data:blob});toast('保存しました')}
@@ -370,19 +521,27 @@ var drop=$('#drop');
 drop.addEventListener('drop',function(e){loadFile(e.dataTransfer.files[0])});
 $('#sampleBtn').addEventListener('click',sample);
 $('#shuffleBtn').addEventListener('click',function(){
-  for(var i=slots.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=slots[i];slots[i]=slots[j];slots[j]=t}
+  var l=cur();
+  for(var i=l.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=l[i];l[i]=l[j];l[j]=t}
   refresh(false);
 });
 $('#zipBtn').addEventListener('click',zip);
 ['removeBg','pixel'].forEach(function(id){$('#'+id).addEventListener('change',function(){$('#tolBox').style.opacity=$('#removeBg').checked?1:.4;refresh(true)})});
 $('#tol').addEventListener('input',function(){refresh(true)});
 ['outline','count','tcol','scol'].forEach(function(id){$('#'+id).addEventListener('input',function(){refresh(false)})});
-document.querySelectorAll('input[name=mode],input[name=tpos]').forEach(function(r){r.addEventListener('change',function(){
-  $('#textGroup').querySelectorAll('.seg')[0].style.opacity=1;refresh(false)})});
+document.querySelectorAll('input[name=mode],input[name=tpos]').forEach(function(r){r.addEventListener('change',function(){refresh(false)})});
+document.querySelectorAll('input[name=src]').forEach(function(r){r.addEventListener('change',function(){
+  $('#uploadBox').hidden=srcMode()!=='upload';refresh(srcMode()==='upload')})});
 
-/* ---------- 起動: フォント読込後にサンプルを表示 ---------- */
-var all=PRESETS.map(function(p){return p.t+p.e}).join('')+'OKZ?!♡☆♪怒';
+/* ---------- 起動: フォントとひよこを用意してから表示 ---------- */
+var all=CH.map(function(p){return p.t+p.e}).join('')+'OKZ?!♡☆♪怒';
 var fl=document.fonts&&document.fonts.load?document.fonts.load('900 40px "Zen Maru Gothic"',all):Promise.resolve();
-Promise.race([fl,new Promise(function(r){setTimeout(r,2500)})]).catch(function(){}).then(sample);
+var imgs=Promise.all(CH.map(function(p){return svgToCanvas(chickSVG(p.spec)).then(function(c){p.img=c})}));
+refresh(false);
+Promise.race([fl,new Promise(function(r){setTimeout(r,2500)})]).catch(function(){}).then(function(){return imgs}).then(function(){
+  var bad=CH.filter(function(p){return !p.img}).length;
+  if(bad){toast('ひよこの絵を作れませんでした。ブラウザを更新してください。');return}
+  chickReady=true;refresh(false);
+});
 })();
 </script>
