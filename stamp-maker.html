@@ -1,0 +1,388 @@
+<title>スタンプ自動メーカー</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<style>
+/* Layout: 左に操作パネル、右に透過チェック柄のプレビューグリッド。狭い画面では縦積み。 */
+:root{
+  --bg:#f1f5f2; --surface:#ffffff; --ink:#15251c; --mute:#5b6e63; --line:#d5dfd8;
+  --accent:#06c755; --accent-ink:#032b15; --chk-a:#e4ece7; --chk-b:#f8fbf9; --focus:#0a7c3a;
+  --font:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1612; --surface:#17221c; --ink:#e8f1ec; --mute:#98ada1; --line:#2a3a31;
+    --accent:#2bd873; --accent-ink:#03200f; --chk-a:#223029; --chk-b:#1a261f; --focus:#58e695; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1612; --surface:#17221c; --ink:#e8f1ec; --mute:#98ada1; --line:#2a3a31;
+  --accent:#2bd873; --accent-ink:#03200f; --chk-a:#223029; --chk-b:#1a261f; --focus:#58e695; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.6;
+  padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1040px;margin:0 auto}
+h1{font-size:26px;font-weight:900;margin:0 0 4px;letter-spacing:.02em;text-wrap:balance}
+.lead{margin:0 0 18px;color:var(--mute);max-width:60ch}
+.layout{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:780px){.layout{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.group{display:flex;flex-direction:column;gap:8px;min-width:0}
+.label{font-size:12px;font-weight:700;color:var(--mute);letter-spacing:.08em}
+button,select,input{font-family:inherit;font-size:16px;color:var(--ink)}
+button:focus-visible,select:focus-visible,input:focus-visible,label:focus-within{outline:3px solid var(--focus);outline-offset:2px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;min-height:44px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn:disabled{opacity:.5;cursor:default}
+.drop{display:flex;align-items:center;justify-content:center;text-align:center;border:2px dashed var(--line);border-radius:12px;padding:16px;min-height:96px;cursor:pointer;color:var(--mute);font-weight:700}
+.drop.over{border-color:var(--accent);color:var(--ink)}
+.drop input{position:absolute;opacity:0;width:1px;height:1px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg label{flex:1;text-align:center;padding:9px 6px;cursor:pointer;font-weight:700;min-width:0}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg label:has(input:checked){background:var(--accent);color:var(--accent-ink)}
+.seg label+label{border-left:1px solid var(--line)}
+select{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 10px;min-height:44px}
+.check{display:flex;align-items:center;gap:10px;min-height:32px;cursor:pointer}
+.check input{width:20px;height:20px;accent-color:var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=color]{width:44px;height:36px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.colors{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.colors span{font-size:13px;color:var(--mute)}
+.checker{background-color:var(--chk-b);background-image:conic-gradient(var(--chk-a) 25%,transparent 0 50%,var(--chk-a) 0 75%,transparent 0);background-size:16px 16px}
+.srcbox{border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;justify-content:center}
+.srcbox canvas{max-width:100%;max-height:140px;image-rendering:pixelated}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.info{font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
+.card{margin:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+.thumb{border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative}
+.thumb img{display:block;width:100%;height:auto;-webkit-touch-callout:default}
+.thumb b{position:absolute;left:6px;top:4px;font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums}
+.card input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 8px;min-width:0}
+.note{font-size:12px;color:var(--mute);margin-top:14px;max-width:70ch}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:700;font-size:14px;max-width:calc(100% - 32px);text-align:center}
+@media(prefers-reduced-motion:no-preference){.btn{transition:transform .08s}.btn:active{transform:scale(.97)}}
+</style>
+
+<div class="wrap">
+  <h1>スタンプ自動メーカー</h1>
+  <p class="lead">キャラクターの画像を1枚入れるだけで、LINEスタンプまたはLINE絵文字の規格サイズのPNGを、セリフ・向き・飾り違いで自動的に作ります。</p>
+
+  <div class="layout">
+    <section class="panel" aria-label="設定">
+      <div class="group">
+        <span class="label">サンプル画像</span>
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="image/*">
+          <span>ここをタップして画像を選ぶ<br><small>(ドラッグ&ドロップも可)</small></span>
+        </label>
+        <button class="btn" id="sampleBtn" type="button">ドット絵ポメで試す</button>
+        <div class="srcbox checker"><canvas id="srcView" width="20" height="18"></canvas></div>
+      </div>
+
+      <div class="group">
+        <span class="label">種類</span>
+        <div class="seg" role="radiogroup" aria-label="種類">
+          <label><input type="radio" name="mode" value="stamp" checked>スタンプ</label>
+          <label><input type="radio" name="mode" value="emoji">絵文字</label>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="label" for="count">枚数</label>
+        <select id="count">
+          <option>8</option><option selected>16</option><option>24</option><option>32</option><option>40</option>
+        </select>
+      </div>
+
+      <div class="group">
+        <span class="label">画像の処理</span>
+        <label class="check"><input type="checkbox" id="removeBg" checked>背景を自動で消す</label>
+        <div id="tolBox" class="group">
+          <label for="tol" class="info">背景の許容度</label>
+          <input type="range" id="tol" min="0" max="100" value="30">
+        </div>
+        <label class="check"><input type="checkbox" id="pixel" checked>ドット絵モード(拡大してもくっきり)</label>
+        <label class="check"><input type="checkbox" id="outline" checked>白フチをつける</label>
+      </div>
+
+      <div class="group" id="textGroup">
+        <span class="label">文字</span>
+        <div class="seg" role="radiogroup" aria-label="文字の位置">
+          <label><input type="radio" name="tpos" value="bottom" checked>下</label>
+          <label><input type="radio" name="tpos" value="top">上</label>
+          <label><input type="radio" name="tpos" value="none">なし</label>
+        </div>
+        <div class="colors">
+          <label class="colors"><input type="color" id="tcol" value="#e8467c"><span>文字色</span></label>
+          <label class="colors"><input type="color" id="scol" value="#ffffff"><span>フチ色</span></label>
+        </div>
+      </div>
+    </section>
+
+    <section aria-label="できあがり" style="min-width:0">
+      <div class="bar">
+        <span class="info" id="info"></span>
+        <div class="row">
+          <button class="btn" id="shuffleBtn" type="button">セリフを入れ替え</button>
+          <button class="btn primary" id="zipBtn" type="button">ZIPで保存</button>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+      <p class="note">ZIPには申請用のメイン画像・タブ画像と、連番のPNGが入っています(スタンプ: 370×320 / メイン240×240 / タブ96×74、絵文字: 180×180 / タブ96×74)。セリフは各画像の下の欄で直せます。保存ボタンが動かない場合は、画像を長押しして保存してください。</p>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+var mk=function(w,h){var c=document.createElement('canvas');c.width=w;c.height=h;return c};
+
+/* ---------- セリフと動きのプリセット(40個) ---------- */
+var PRESETS=[
+ {t:'OK!',fx:'big',e:'OK'},{t:'ありがとう',fx:'hearts',e:'♡'},{t:'おはよう',fx:'sparkle',e:''},{t:'おやすみ',fx:'zzz',e:'zzz'},
+ {t:'りょうかい',fx:'normal',e:'OK'},{t:'ごめんね',fx:'sweat',e:''},{t:'おつかれさま',fx:'tiltL',e:''},{t:'だいすき',fx:'hearts',e:'♡'},
+ {t:'やったー！',fx:'stars',e:'☆'},{t:'えっ？',fx:'question',e:'?'},{t:'ねむい…',fx:'zzz',e:''},{t:'がんばれ！',fx:'big',e:''},
+ {t:'まって！',fx:'exclaim',e:'!'},{t:'おねがい',fx:'tiltR',e:''},{t:'だいじょうぶ',fx:'normal',e:''},{t:'いいね！',fx:'sparkle',e:'♪'},
+ {t:'ぴえん',fx:'blue',e:''},{t:'おめでとう',fx:'stars',e:''},{t:'たのしみ',fx:'sparkle',e:''},{t:'おなかすいた',fx:'squash',e:''},
+ {t:'よろしく',fx:'tiltR',e:''},{t:'ひま〜',fx:'flip',e:''},{t:'うれしい',fx:'pink',e:''},{t:'むり…',fx:'blue',e:''},
+ {t:'ぷんぷん',fx:'angry',e:'怒'},{t:'びっくり',fx:'exclaim',e:'!'},{t:'にっこり',fx:'normal',e:''},{t:'どきどき',fx:'hearts',e:''},
+ {t:'ふむふむ',fx:'tiltL',e:''},{t:'ちょっと待ってね',fx:'small',e:''},{t:'今行くよ',fx:'stretch',e:''},{t:'ありがとうございます',fx:'tiltR',e:''},
+ {t:'おつ',fx:'flip',e:''},{t:'すみません',fx:'sweat',e:''},{t:'いただきます',fx:'sparkle',e:''},{t:'ごちそうさま',fx:'pink',e:''},
+ {t:'ただいま',fx:'big',e:''},{t:'おかえり',fx:'flipTilt',e:''},{t:'また明日',fx:'tiltL',e:''},{t:'いってきます',fx:'stretch',e:''}
+];
+var FX={
+ normal:{},big:{sc:1.12,dy:-0.02},small:{sc:0.82,dy:0.06},tiltL:{rot:-12},tiltR:{rot:12},
+ flip:{flip:1},flipTilt:{flip:1,rot:10},squash:{sx:1.15,sy:0.85,dy:0.05},stretch:{sx:0.88,sy:1.1},
+ hearts:{deco:'hearts'},stars:{deco:'stars',sc:1.05},sparkle:{deco:'sparkle'},sweat:{deco:'sweat',rot:-6},
+ question:{deco:'q',rot:-6},exclaim:{deco:'ex'},zzz:{deco:'zzz',rot:6},
+ angry:{deco:'angry',tint:'rgba(255,60,40,0.28)',sx:1.08,sy:0.94},
+ pink:{tint:'rgba(255,120,170,0.25)',deco:'hearts'},blue:{tint:'rgba(70,120,255,0.28)',deco:'sweat'}
+};
+var slots=PRESETS.map(function(p){return Object.assign({},p)});
+
+/* ---------- 状態 ---------- */
+var orig=null, SRC=null, fontReady=false;
+function mode(){return document.querySelector('input[name=mode]:checked').value}
+function cfg(){
+  var m=mode();
+  return {mode:m,W:m==='stamp'?370:180,H:m==='stamp'?320:180,
+    outline:$('#outline').checked,pixel:$('#pixel').checked,
+    textPos:document.querySelector('input[name=tpos]:checked').value,
+    tcol:$('#tcol').value,scol:$('#scol').value};
+}
+
+/* ---------- 画像の読み込みと背景除去 ---------- */
+function removeBg(cv,tol){
+  var w=cv.width,h=cv.height,ctx=cv.getContext('2d',{willReadFrequently:true});
+  var id=ctx.getImageData(0,0,w,h),d=id.data,tr=0,n=0,x,y;
+  function chk(px,py){n++;if(d[(py*w+px)*4+3]<200)tr++}
+  for(x=0;x<w;x++){chk(x,0);chk(x,h-1)} for(y=0;y<h;y++){chk(0,y);chk(w-1,y)}
+  if(tr/n>0.5)return;
+  var pts=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]],br=0,bg=0,bb=0;
+  pts.forEach(function(p){var o=(p[1]*w+p[0])*4;br+=d[o];bg+=d[o+1];bb+=d[o+2]});
+  br/=4;bg/=4;bb/=4;
+  var thr=tol*2.5,thr2=thr*thr,seen=new Uint8Array(w*h),stack=[];
+  function push(px,py){var k=py*w+px;if(seen[k])return;var o=k*4,dr=d[o]-br,dg=d[o+1]-bg,db=d[o+2]-bb;
+    if(dr*dr+dg*dg+db*db>thr2)return;seen[k]=1;stack.push(k)}
+  for(x=0;x<w;x++){push(x,0);push(x,h-1)} for(y=0;y<h;y++){push(0,y);push(w-1,y)}
+  while(stack.length){var k=stack.pop(),px=k%w,py=(k/w)|0;d[k*4+3]=0;
+    if(px>0)push(px-1,py);if(px<w-1)push(px+1,py);if(py>0)push(px,py-1);if(py<h-1)push(px,py+1)}
+  ctx.putImageData(id,0,0);
+}
+function crop(cv){
+  var w=cv.width,h=cv.height,d=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data;
+  var x0=w,y0=h,x1=-1,y1=-1;
+  for(var y=0;y<h;y++)for(var x=0;x<w;x++){if(d[(y*w+x)*4+3]>10){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}}
+  if(x1<0)return cv;
+  var o=mk(x1-x0+1,y1-y0+1);o.getContext('2d').drawImage(cv,x0,y0,o.width,o.height,0,0,o.width,o.height);return o;
+}
+function buildSource(){
+  if(!orig)return;
+  var pix=$('#pixel').checked,s=Math.min(1,700/Math.max(orig.width,orig.height));
+  var work=mk(Math.max(1,Math.round(orig.width*s)),Math.max(1,Math.round(orig.height*s)));
+  var x=work.getContext('2d');x.imageSmoothingEnabled=!pix;x.drawImage(orig,0,0,work.width,work.height);
+  if($('#removeBg').checked)removeBg(work,+$('#tol').value);
+  SRC=crop(work);
+  var v=$('#srcView');v.width=SRC.width;v.height=SRC.height;
+  var vx=v.getContext('2d');vx.clearRect(0,0,v.width,v.height);vx.drawImage(SRC,0,0);
+  v.style.width=Math.min(SRC.width*(SRC.width<64?6:1),280)+'px';
+}
+function loadFile(f){
+  if(!f)return;
+  var img=new Image(),url=URL.createObjectURL(f);
+  img.onload=function(){orig=mk(img.naturalWidth,img.naturalHeight);orig.getContext('2d').drawImage(img,0,0);
+    URL.revokeObjectURL(url);$('#pixel').checked=Math.max(orig.width,orig.height)<=128;refresh(true)};
+  img.onerror=function(){toast('画像を読み込めませんでした。別の画像を試してください。')};
+  img.src=url;
+}
+function sample(){
+  function R(){var a=[];for(var i=0;i<arguments.length;i+=2)for(var j=0;j<arguments[i+1];j++)a.push(arguments[i]);return a}
+  var rows=[R('.',3,'o',2,'.',10,'o',2,'.',3),R('.',2,'o',1,'f',2,'o',1,'.',8,'o',1,'f',2,'o',1,'.',2),
+   R('.',2,'o',1,'f',3,'o',8,'f',3,'o',1,'.',2),R('.',1,'o',1,'f',16,'o',1,'.',1),R('o',1,'f',18,'o',1),
+   R('o',1,'f',5,'k',2,'f',4,'k',2,'f',5,'o',1),R('o',1,'f',5,'k',2,'f',4,'k',2,'f',5,'o',1),
+   R('o',1,'f',4,'l',10,'f',4,'o',1),R('o',1,'f',5,'l',3,'n',2,'l',3,'f',5,'o',1),
+   R('o',1,'f',5,'l',3,'o',2,'l',3,'f',5,'o',1),R('.',1,'o',1,'f',7,'p',2,'f',7,'o',1,'.',1),
+   R('.',2,'o',1,'f',14,'o',1,'.',2),R('.',3,'o',1,'f',5,'w',4,'f',5,'o',1,'.',1),
+   R('.',3,'o',1,'f',4,'w',6,'f',4,'o',1,'.',1),R('.',4,'o',1,'f',12,'o',1,'.',2),
+   R('.',4,'o',1,'f',4,'o',2,'f',4,'o',1,'.',4),R('.',4,'o',1,'w',4,'o',2,'w',4,'o',1,'.',4),
+   R('.',5,'o',4,'.',2,'o',4,'.',5)];
+  var pal={o:'#5a3418',f:'#f2a24a',l:'#ffd9a3',w:'#ffffff',k:'#222222',n:'#3a2416',p:'#ff7a9a'};
+  var c=mk(20,rows.length),x=c.getContext('2d');
+  rows.forEach(function(r,y){r.forEach(function(ch,i){if(ch!=='.'){x.fillStyle=pal[ch];x.fillRect(i,y,1,1)}})});
+  orig=c;$('#pixel').checked=true;refresh(true);
+}
+
+/* ---------- 描画 ---------- */
+function heart(x,s,px,py){x.beginPath();x.moveTo(px,py+s*.55);
+  x.bezierCurveTo(px-s*1.2,py-s*.1,px-s*.55,py-s*.95,px,py-s*.35);
+  x.bezierCurveTo(px+s*.55,py-s*.95,px+s*1.2,py-s*.1,px,py+s*.55);x.closePath()}
+function star(x,r,px,py){x.beginPath();for(var i=0;i<10;i++){var a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.45:r;
+  x[i?'lineTo':'moveTo'](px+Math.cos(a)*rr,py+Math.sin(a)*rr)}x.closePath()}
+function spark(x,r,px,py){x.beginPath();for(var i=0;i<8;i++){var a=-Math.PI/2+i*Math.PI/4,rr=i%2?r*.28:r;
+  x[i?'lineTo':'moveTo'](px+Math.cos(a)*rr,py+Math.sin(a)*rr)}x.closePath()}
+function drop(x,s,px,py){x.beginPath();x.moveTo(px,py-s);
+  x.bezierCurveTo(px+s*.9,py+s*.1,px+s*.6,py+s*.9,px,py+s*.9);
+  x.bezierCurveTo(px-s*.6,py+s*.9,px-s*.9,py+s*.1,px,py-s);x.closePath()}
+function shape(x,path,fill,lw){x.lineJoin='round';x.lineWidth=lw;x.strokeStyle='#fff';path();x.stroke();x.fillStyle=fill;path();x.fill()}
+var FONT='"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif';
+function label(x,t,px,py,fs,fill,stroke,maxW){
+  x.font='900 '+fs+'px '+FONT;
+  var w=x.measureText(t).width;if(maxW&&w>maxW){fs=Math.floor(fs*maxW/w);x.font='900 '+fs+'px '+FONT}
+  x.textAlign='center';x.textBaseline='middle';x.lineJoin='round';
+  x.lineWidth=Math.max(2,fs*.3);x.strokeStyle=stroke;x.strokeText(t,px,py);x.fillStyle=fill;x.fillText(t,px,py);
+}
+function deco(x,kind,b){
+  var s=Math.min(b.aw,b.ah)*.16,lw=Math.max(2,s*.28);
+  var tr=[b.ax+b.aw*.82,b.ay+b.ah*.2],tl=[b.ax+b.aw*.18,b.ay+b.ah*.2],bl=[b.ax+b.aw*.14,b.ay+b.ah*.72];
+  if(kind==='hearts'){shape(x,function(){heart(x,s,tr[0],tr[1])},'#ff5c8a',lw);shape(x,function(){heart(x,s*.7,tl[0],tl[1]+s*.4)},'#ff8fb0',lw)}
+  else if(kind==='stars'){shape(x,function(){star(x,s*1.1,tr[0],tr[1])},'#ffc93c',lw);shape(x,function(){star(x,s*.7,tl[0],tl[1]+s*.3)},'#ffe08a',lw)}
+  else if(kind==='sparkle'){shape(x,function(){spark(x,s*1.2,tr[0],tr[1])},'#ffd84d',lw);shape(x,function(){spark(x,s*.8,bl[0],bl[1])},'#fff3a8',lw)}
+  else if(kind==='sweat'){shape(x,function(){drop(x,s*.9,tl[0]+s*.4,tl[1]+s*.4)},'#5ab4ff',lw)}
+  else if(kind==='q')label(x,'?',tr[0],tr[1],s*3,'#3b82f6','#fff')
+  else if(kind==='ex')label(x,'!',tr[0],tr[1],s*3,'#ff5a36','#fff')
+  else if(kind==='zzz'){label(x,'Z',tr[0]-s*.9,tr[1]+s*.8,s*1.6,'#6c8cff','#fff');label(x,'Z',tr[0],tr[1]+s*.1,s*2.1,'#6c8cff','#fff');label(x,'Z',tr[0]+s*.9,tr[1]-s*.8,s*2.6,'#6c8cff','#fff')}
+  else if(kind==='angry'){x.save();x.translate(tr[0],tr[1]);x.lineCap='round';
+    [['#fff',lw*2.2],['#e53935',lw]].forEach(function(p){x.strokeStyle=p[0];x.lineWidth=p[1];x.beginPath();
+      x.moveTo(-s*.7,-s*.2);x.quadraticCurveTo(-s*.2,-s*.2,-s*.2,-s*.8);x.moveTo(s*.7,-s*.2);x.quadraticCurveTo(s*.2,-s*.2,s*.2,-s*.8);
+      x.moveTo(-s*.7,s*.2);x.quadraticCurveTo(-s*.2,s*.2,-s*.2,s*.8);x.moveTo(s*.7,s*.2);x.quadraticCurveTo(s*.2,s*.2,s*.2,s*.8);x.stroke()});x.restore()}
+}
+function layer(scale,ow,tint,pix){
+  var cw=Math.max(1,Math.round(SRC.width*scale)),ch=Math.max(1,Math.round(SRC.height*scale)),pad=ow+2;
+  var im=mk(cw,ch),ix=im.getContext('2d');ix.imageSmoothingEnabled=!pix;ix.drawImage(SRC,0,0,cw,ch);
+  if(tint){ix.globalCompositeOperation='source-atop';ix.fillStyle=tint;ix.fillRect(0,0,cw,ch)}
+  var L=mk(cw+pad*2,ch+pad*2),lx=L.getContext('2d');lx.imageSmoothingEnabled=!pix;
+  if(ow>0){var sil=mk(cw,ch),sx=sil.getContext('2d');sx.drawImage(im,0,0);sx.globalCompositeOperation='source-in';sx.fillStyle='#fff';sx.fillRect(0,0,cw,ch);
+    for(var r=ow;r>0;r-=Math.max(1,Math.floor(ow/2)))for(var k=0;k<24;k++){var a=k*Math.PI/12;lx.drawImage(sil,pad+Math.cos(a)*r,pad+Math.sin(a)*r)}}
+  lx.drawImage(im,pad,pad);return L;
+}
+function render(p,c,o){
+  o=o||{};
+  var W=o.W||c.W,H=o.H||c.H,stamp=c.mode==='stamp'&&!o.plain;
+  var cv=mk(W,H),x=cv.getContext('2d'),fx=FX[o.plain?'normal':p.fx]||{};
+  var text=o.plain?'':(c.mode==='stamp'?p.t:p.e)||'';
+  if(c.mode==='stamp'&&c.textPos==='none')text='';
+  var m=Math.max(2,Math.round(Math.min(W,H)*.03));
+  var textH=(stamp&&text)?Math.round(H*.27):0;
+  var aw=W-2*m,ah=H-2*m-textH,ax=m,ay=(c.textPos==='top')?m+textH:m;
+  var ow=c.outline?Math.max(1,Math.round(Math.min(W,H)*.022)):0;
+  var base=Math.min((aw-2*ow-4)/SRC.width,(ah-2*ow-4)/SRC.height);
+  if(c.pixel&&base>=1)base=Math.floor(base);
+  var sc=base*(fx.sc||1);if(c.pixel&&sc>=1)sc=Math.max(1,Math.round(sc));
+  var L=layer(sc,ow,fx.tint,c.pixel);
+  x.save();x.translate(ax+aw/2+(fx.dx||0)*aw,ay+ah/2+(fx.dy||0)*ah);
+  x.rotate((fx.rot||0)*Math.PI/180);x.scale((fx.flip?-1:1)*(fx.sx||1),fx.sy||1);
+  x.imageSmoothingEnabled=!c.pixel;x.drawImage(L,-L.width/2,-L.height/2);x.restore();
+  if(fx.deco&&!o.plain)deco(x,fx.deco,{ax:ax,ay:ay,aw:aw,ah:ah});
+  if(text){
+    if(stamp){var cy=c.textPos==='top'?m+textH/2:H-m-textH/2;label(x,text,W/2,cy,textH*.82,c.tcol,c.scol,W-2*m)}
+    else label(x,text,W*.7,H*.78,H*.3,c.tcol,c.scol,W*.6);
+  }
+  return cv;
+}
+
+/* ---------- 画面 ---------- */
+var token=0;
+function refresh(rebuild){
+  if(rebuild)buildSource();
+  if(!SRC)return;
+  var t=++token;
+  requestAnimationFrame(function(){if(t!==token)return;paintGrid()});
+}
+function paintGrid(){
+  var c=cfg(),n=+$('#count').value,g=$('#grid');
+  g.textContent='';
+  for(var i=0;i<n;i++)(function(i){
+    var fig=document.createElement('figure');fig.className='card';
+    var th=document.createElement('div');th.className='thumb checker';
+    var img=document.createElement('img');img.alt=(i+1)+'番目の'+(c.mode==='stamp'?'スタンプ':'絵文字');
+    img.src=render(slots[i],c).toDataURL('image/png');
+    var b=document.createElement('b');b.textContent=i+1;
+    th.appendChild(img);th.appendChild(b);fig.appendChild(th);
+    var inp=document.createElement('input');inp.type='text';
+    var key=c.mode==='stamp'?'t':'e';
+    inp.value=slots[i][key];inp.maxLength=c.mode==='stamp'?24:4;
+    inp.placeholder=c.mode==='stamp'?'セリフ':'文字なし';
+    inp.setAttribute('aria-label',(i+1)+'番目の文字');
+    inp.addEventListener('input',function(){slots[i][key]=inp.value;img.src=render(slots[i],cfg()).toDataURL('image/png')});
+    fig.appendChild(inp);g.appendChild(fig);
+  })(i);
+  $('#info').textContent=c.W+'×'+c.H+'px ・ '+n+'枚 ・ 透過PNG';
+  $('#zipBtn').disabled=false;
+}
+function toast(msg){var t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(function(){t.hidden=true},3200)}
+
+/* ---------- ZIP保存 ---------- */
+var dl=null;
+try{if(window.claude&&window.claude.use)window.claude.use('downloads').then(function(d){dl=d}).catch(function(){})}catch(e){}
+function blobOf(cv){return new Promise(function(r){cv.toBlob(r,'image/png')})}
+async function zip(){
+  if(!SRC)return;
+  var btn=$('#zipBtn');btn.disabled=true;
+  try{
+    var c=cfg(),n=+$('#count').value,z=new JSZip(),pad=c.mode==='stamp'?2:3;
+    for(var i=0;i<n;i++)z.file(String(i+1).padStart(pad,'0')+'.png',await blobOf(render(slots[i],c)));
+    if(c.mode==='stamp')z.file('main.png',await blobOf(render(null,c,{W:240,H:240,plain:true})));
+    z.file('tab.png',await blobOf(render(null,c,{W:96,H:74,plain:true})));
+    var blob=await z.generateAsync({type:'blob'}),name=(c.mode==='stamp'?'stamp':'emoji')+'_'+n+'.zip';
+    if(dl){
+      try{await dl.save({filename:name,data:blob});toast('保存しました')}
+      catch(e){if(!e||e.code!=='declined')toast('保存できませんでした。画像を長押しして保存してください。')}
+    }else{
+      var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+      toast('ダウンロードを開始しました');
+    }
+  }catch(e){toast('ZIPを作れませんでした。')}
+  btn.disabled=false;
+}
+
+/* ---------- イベント ---------- */
+$('#file').addEventListener('change',function(e){loadFile(e.target.files[0])});
+var drop=$('#drop');
+['dragover','dragenter'].forEach(function(n){drop.addEventListener(n,function(e){e.preventDefault();drop.classList.add('over')})});
+['dragleave','drop'].forEach(function(n){drop.addEventListener(n,function(e){e.preventDefault();drop.classList.remove('over')})});
+drop.addEventListener('drop',function(e){loadFile(e.dataTransfer.files[0])});
+$('#sampleBtn').addEventListener('click',sample);
+$('#shuffleBtn').addEventListener('click',function(){
+  for(var i=slots.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=slots[i];slots[i]=slots[j];slots[j]=t}
+  refresh(false);
+});
+$('#zipBtn').addEventListener('click',zip);
+['removeBg','pixel'].forEach(function(id){$('#'+id).addEventListener('change',function(){$('#tolBox').style.opacity=$('#removeBg').checked?1:.4;refresh(true)})});
+$('#tol').addEventListener('input',function(){refresh(true)});
+['outline','count','tcol','scol'].forEach(function(id){$('#'+id).addEventListener('input',function(){refresh(false)})});
+document.querySelectorAll('input[name=mode],input[name=tpos]').forEach(function(r){r.addEventListener('change',function(){
+  $('#textGroup').querySelectorAll('.seg')[0].style.opacity=1;refresh(false)})});
+
+/* ---------- 起動: フォント読込後にサンプルを表示 ---------- */
+var all=PRESETS.map(function(p){return p.t+p.e}).join('')+'OKZ?!♡☆♪怒';
+var fl=document.fonts&&document.fonts.load?document.fonts.load('900 40px "Zen Maru Gothic"',all):Promise.resolve();
+Promise.race([fl,new Promise(function(r){setTimeout(r,2500)})]).catch(function(){}).then(sample);
+})();
+</script>
